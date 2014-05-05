@@ -1,18 +1,24 @@
 #!/usr/bin/env python
 
 import datetime
+import hashlib
 import json
+import os
 import urllib.request
 
 
-CACHE_FILE = '/home/peter/freedns_cache'
 FREEDNS = {
-        'key': 'NEVDSXI1NnpxOUREeUxxOGtiTW9raHg1OjExNjI3NDA0',
+        'username': 'peterjpierce',
+        'password': 'Trying123f!',
         'subdomains': [
             'ppierce.mooo.com',
+            'homarus.mooo.com',
             ]
         }
+
 ENCODING = 'utf-8'
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+CACHE_FILE = os.path.join(os.environ['HOME'], '.%s.cache' % os.path.basename(__file__))
 
 
 class Cache():
@@ -40,7 +46,7 @@ class Cache():
         """
         self.changed = True
         subcache = self._get_subdomain_node(subdomain)
-        now = datetime.datetime.now().strftime('%Y%m%d %H:%M:%S')
+        now = datetime.datetime.now().strftime(DATE_FORMAT)
 
         if subcache['ip'] == ipaddress:
             subcache['same_count'] += 1
@@ -95,31 +101,48 @@ class Cache():
 
     def __str__(self):
         return str(self.cache)
-    
+
 
 class FreeDNS():
     """Check and update FreeDNS settings."""
     BASE = 'http://freedns.afraid.org'
 
-    def __init__(self, freedns_key):
-        self.freedns_key = freedns_key
+    def __init__(self, username, password):
+        self.authkey = self._derive_authkey(username, password)
+        self.subdomains = {}
+        self._refresh_subdomain_settings()
 
     def current_ip(self, subdomain):
         """Get the IP currently configured at FreeDNS."""
-        url = '%s/api/?action=getdyndns&sha=%s' % (self.BASE, self.freedns_key)
-        with urllib.request.urlopen(url) as f:
-            for item in f:
-                host, ip = item.decode(ENCODING).split('|')[0:1]
-                if host == self.subdomain:
-                    return ip
-        # failed if it fell through
-        return None
-    
+        return self.subdomains[subdomain]['ip']
+
     def update(self, subdomain):
-        url = '%s/dynamic/update.php?%s' % (self.BASE, self.freedns_key)
+        url = self.subdomains[subdomain]['update_url']
         with urllib.request.urlopen(url) as f:
             resp = f.read().decode(ENCODING)
+        self._refresh_subdomain_settings()
         return self.current_ip(subdomain)
+
+    def _refresh_subdomain_settings(self):
+        """Get subdomains, current IP and tokenized URLs from FreeDNS.
+
+        Note that you may not be managing all subdomains you discover here,
+        just the ones configured at the top. This allows you to manage
+        different subsets per calling location.
+        """
+        settings = {}
+        call = '%s/api/?action=getdyndns&sha=%s' % (self.BASE, self.authkey)
+        with urllib.request.urlopen(call) as f:
+            for item in f:
+                sub, ip, url = item.decode(ENCODING).split('|')
+                settings[sub] = {'ip': ip, 'update_url': url}
+        self.subdomains = settings
+
+    def _derive_authkey(self, username, password):
+        """Generate SHA1 digest of credentials in FreeDNS form."""
+        msg = hashlib.sha1()
+        msg.update(('%s|%s' % (username, password)).encode(ENCODING))
+        return msg.hexdigest()
 
 
 class FreeDnsError(Exception):
@@ -136,21 +159,16 @@ def get_public_ip():
 def run():
 
     cache = Cache()
-    freedns = FreeDNS(FREEDNS['key'])
+    freedns = FreeDNS(FREEDNS['username'], FREEDNS['password'])
     public_ip = get_public_ip()
 
     for subdomain in FREEDNS['subdomains']:
-        cached = cache.ip_for(subdomain)
+        if not public_ip == freedns.current_ip(subdomain):
+            updated = freedns.update(subdomain)
+            print('updated FreeDNS for %s to %s' % (subdomain, updated))
 
-        if not cached == public_ip:
-
-            freedns_ip = freedns.current_ip(subdomain)
-            if not public_ip == freedns_ip:
-                updated = freedns.update(subdomain)
-                print('updated FreeDNS for %s to %s' % (subdomain, updated))
-
-                if not updated == public_ip:
-                    raise FreeDnsError('FreeDNS not updated to %s' % public_ip)
+            if not updated == public_ip:
+                raise FreeDnsError('FreeDNS not updated to %s' % public_ip)
 
         cache.update(subdomain, public_ip)
 
