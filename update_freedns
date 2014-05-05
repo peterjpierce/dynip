@@ -1,0 +1,161 @@
+#!/usr/bin/env python
+
+import datetime
+import json
+import urllib.request
+
+
+CACHE_FILE = '/home/peter/freedns_cache'
+FREEDNS = {
+        'key': 'NEVDSXI1NnpxOUREeUxxOGtiTW9raHg1OjExNjI3NDA0',
+        'subdomains': [
+            'ppierce.mooo.com',
+            ]
+        }
+ENCODING = 'utf-8'
+
+
+class Cache():
+    """Create, read and update cache values."""
+
+    def __init__(self, cache_path=CACHE_FILE):
+        self.cache = self.get_cache()
+        self.changed = False
+
+    def __del__(self):
+        """Persist any unsaved changes before being destroyed."""
+        if self.changed:
+            self.save()
+
+    def ip_for(self, subdomain):
+        """Get the currently cached IP address for a subdomain."""
+        subcache = self._get_subdomain_node(subdomain)
+        return subcache['ip']
+
+    def update(self, subdomain, ipaddress):
+        """Update the cache for a subdomain.
+
+        As a minimum, this increments 'same_count' and 'checked', but if the
+        ip address has changed, it updates all the fields for this entry.
+        """
+        self.changed = True
+        subcache = self._get_subdomain_node(subdomain)
+        now = datetime.datetime.now().strftime('%Y%m%d %H:%M:%S')
+
+        if subcache['ip'] == ipaddress:
+            subcache['same_count'] += 1
+        else:
+            subcache['ip'] = ipaddress
+            subcache['new'] = now
+            subcache['same_count'] = 0
+        subcache['checked'] = now
+
+    def save(self):
+        """Persist the current cache back to the file system."""
+        try:
+            with open(CACHE_FILE, 'w') as f:
+                json.dump(self.cache, f)
+        except IOError as err:
+            raise
+        else:
+            self.changed = False
+
+    def get_cache(self):
+        """Read cache from the file system."""
+        try:
+            with open(CACHE_FILE, 'r') as f:
+                cache = json.load(f)
+        except FileNotFoundError as err:
+            cache = self._new_cache()
+        return cache
+
+    def _get_subdomain_node(self, subdomain):
+        """Return the vector for a subdomain, instantiating if needed."""
+        if not subdomain in self.cache['data']:
+            self._new_subdomain(subdomain)
+        return self.cache['data'][subdomain]
+
+    def _new_cache(self):
+        """Start a new cache from scratch."""
+        cache = {'data': {}}
+        for subdomain in FREEDNS['subdomains']:
+            cache['data'][subdomain] = self._empty_vector()
+        return cache
+
+    def _new_subdomain(self, subdomain):
+        """Add a new subdomain to the cache."""
+        if subdomain in self.cache['data']:
+            raise FreeDnsError('subcache %s already exists' % subdomain)
+        else:
+            self.cache['data'][subdomain] = self._empty_vector()
+        return None
+
+    def _empty_vector(self):
+        return {'new': None, 'checked': None, 'ip': None, 'same_count': 0}
+
+    def __str__(self):
+        return str(self.cache)
+    
+
+class FreeDNS():
+    """Check and update FreeDNS settings."""
+    BASE = 'http://freedns.afraid.org'
+
+    def __init__(self, freedns_key):
+        self.freedns_key = freedns_key
+
+    def current_ip(self, subdomain):
+        """Get the IP currently configured at FreeDNS."""
+        url = '%s/api/?action=getdyndns&sha=%s' % (self.BASE, self.freedns_key)
+        with urllib.request.urlopen(url) as f:
+            for item in f:
+                host, ip = item.decode(ENCODING).split('|')[0:1]
+                if host == self.subdomain:
+                    return ip
+        # failed if it fell through
+        return None
+    
+    def update(self, subdomain):
+        url = '%s/dynamic/update.php?%s' % (self.BASE, self.freedns_key)
+        with urllib.request.urlopen(url) as f:
+            resp = f.read().decode(ENCODING)
+        return self.current_ip(subdomain)
+
+
+class FreeDnsError(Exception):
+    """Raised for errors encountered in this module."""
+    pass
+
+
+def get_public_ip():
+    with urllib.request.urlopen('http://plainip.com') as f:
+        public_ip = f.read().decode(ENCODING)
+    return public_ip
+
+
+def run():
+
+    cache = Cache()
+    freedns = FreeDNS(FREEDNS['key'])
+    public_ip = get_public_ip()
+
+    for subdomain in FREEDNS['subdomains']:
+        cached = cache.ip_for(subdomain)
+
+        if not cached == public_ip:
+
+            freedns_ip = freedns.current_ip(subdomain)
+            if not public_ip == freedns_ip:
+                updated = freedns.update(subdomain)
+                print('updated FreeDNS for %s to %s' % (subdomain, updated))
+
+                if not updated == public_ip:
+                    raise FreeDnsError('FreeDNS not updated to %s' % public_ip)
+
+        cache.update(subdomain, public_ip)
+
+    cache.save()
+
+
+if __name__== '__main__':
+    run()
