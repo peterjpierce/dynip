@@ -1,33 +1,34 @@
 # dynip
-Manage your dynamic DNS settings for one or more subdomains at
+Manage your dynamic IP (DNS) settings for one or more subdomains at
 [FreeDNS](http://freedns.afraid.org).
 
 ## Installation
-The current version requires Python 3 and has only been tested on Linux and
-FreeBSD.  A Python 2 version will be released soon.
+The current version requires Python 2.7 or 3, and has been tested on Linux and
+FreeBSD.
 
 
 ### Step 1: Set up your account and subdomain(s) at FreeDNS
 Follow their ample instructions.
 
 ### Step 2: Configure FreeDNS
-Download this repository, and edit the `freedns` file, configuring the three `FREEDNS_*`
-variables near the top, to record your username, password and subdomains.
+Download this repository, and edit the `freedns` file, configuring the
+three `FREEDNS_*` variables near the top, to record your username,
+password and subdomains.
 
-To list the subdomains you are managing, separate each with a newline between the triple
-quotes, like so:
+To list the subdomains you are managing, separate each with any type of
+white space (including newlines) between the triple quotes, like so:
 
 ```
 FREEDNS_SUBDOMAINS = """
         xyz.mooo.com
-        xyz.afraid.org
-""".split()
+        abc.afraid.org
+"""
 ```
 
 ### Step 3: (Optional) Schedule recurring updates
-If you want keep FreeDNS updated with your latest dynamic IP, schedule this
-script to run at regular intervals.  For example, a crontab entry like this would
-cause updates every four hours (substitute your installation location):
+If you want to keep FreeDNS updated with your latest dynamic IP, schedule this
+script to run at regular intervals.  For example, a crontab entry like this
+will cause checks/updates every four hours (substitute your installation location):
 
 ```
 5  */4  *  *  *  /home/peter/bin/freedns

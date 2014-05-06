@@ -1,20 +1,56 @@
 #!/usr/bin/env python
 
+"""
+freedns
+
+Manage your dynamic IP (DNS) settings for one or more subdomains at FreeDNS.
+
+Run with --help to see usage instructions.
+
+The tool has two primary modes:
+ - update
+ - status
+
+Running with no arguments (or 'update') checks your current public IP
+address against settings at FreeDNS and makes updates as needed.
+
+You may optionally use --domain to limit this operation to just one of
+your configured subdomains.
+
+The tool also keeps a cache of recent statistics (in $HOME/.freedns.cache)
+that you can review using argument 'status', which provides tabular
+output showing IP address and dates for last-changed and last-checked per
+subdomain.
+
+When configuring below, you do not need to provide the special SHA1 and
+URL keys discussed at FreeDNS and needed by other tools (they are handled
+for you).  Subdomains may be separated by any type of whitespace,
+including newlines.
+
+by: Peter Pierce <peterjpierce@gmail.com>
+
+BTC 1CavTJLrtRXfWJ5MKZH53dudfq9aWa3z6E
+LTC LhdsXnNjZyMJF8TrvV7y1pSmhyQSs9RyB7
+GLD E3qqqrLejCXVPjZD9XnabYNXvJ8nDeHymF
+"""
+
+# Configure here only
+FREEDNS_USERNAME = 'xxxxxxxxxxxxx'
+FREEDNS_PASSWORD = 'yyyyyyyyyyy'
+FREEDNS_SUBDOMAINS = """
+        xyz.mooo.com
+        abc.afraid.org
+"""
+
 import argparse
 import datetime
 import hashlib
 import json
 import os
-import urllib.request
-
-# configure here (only)
-FREEDNS_USERNAME =  'xxxxxxxxxxxxx'
-FREEDNS_PASSWORD =  'yyyyyyyyyyy'
-FREEDNS_SUBDOMAINS = """
-        xyz.mooo.com
-        xyz.afraid.org
-""".split()
-# end of configuration
+try:
+    from urllib.request import urlopen
+except ImportError as err:
+    from urllib2 import urlopen
 
 ENCODING = 'utf-8'
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -25,6 +61,7 @@ class Cache():
     """Create, read and update cache values."""
 
     def __init__(self, cache_path=CACHE_FILE):
+        self.cache_path = cache_path
         self.cache = self.get_cache()
         self.changed = False
 
@@ -59,7 +96,7 @@ class Cache():
     def save(self):
         """Persist the current cache back to the file system."""
         try:
-            with open(CACHE_FILE, 'w') as f:
+            with open(self.cache_path, 'w') as f:
                 json.dump(self.cache, f)
         except IOError as err:
             raise
@@ -69,7 +106,7 @@ class Cache():
     def get_cache(self):
         """Read cache from the file system."""
         try:
-            with open(CACHE_FILE, 'r') as f:
+            with open(self.cache_path, 'r') as f:
                 cache = json.load(f)
         except FileNotFoundError as err:
             cache = self._new_cache()
@@ -84,7 +121,7 @@ class Cache():
     def _new_cache(self):
         """Start a new cache from scratch."""
         cache = {'data': {}}
-        for subdomain in FREEDNS_SUBDOMAINS:
+        for subdomain in SUBDOMAINS:
             cache['data'][subdomain] = self._empty_vector()
         return cache
 
@@ -118,8 +155,9 @@ class FreeDNS():
 
     def update(self, subdomain):
         url = self.subdomains[subdomain]['update_url']
-        with urllib.request.urlopen(url) as f:
-            resp = f.read().decode(ENCODING)
+        f = urlopen(url)
+        resp = f.read().decode(ENCODING)
+        f.close()
         self._refresh_subdomain_settings()
         return self.current_ip(subdomain)
 
@@ -132,10 +170,11 @@ class FreeDNS():
         """
         settings = {}
         call = '%s/api/?action=getdyndns&sha=%s' % (self.BASE, self.authkey)
-        with urllib.request.urlopen(call) as f:
-            for item in f:
-                sub, ip, url = item.decode(ENCODING).split('|')
-                settings[sub] = {'ip': ip, 'update_url': url}
+        f = urlopen(call)
+        for item in f:
+            sub, ip, url = item.decode(ENCODING).split('|')
+            settings[sub] = {'ip': ip, 'update_url': url}
+        f.close()
         self.subdomains = settings
 
     def _derive_authkey(self, username, password):
@@ -151,18 +190,23 @@ class FreeDnsError(Exception):
 
 
 def get_public_ip():
-    with urllib.request.urlopen('http://plainip.com') as f:
-        public_ip = f.read().decode(ENCODING)
+    f = urlopen('http://plainip.com')
+    public_ip = f.read().decode(ENCODING)
+    f.close()
     return public_ip
 
 
-def getargs():
+def setup():
+    """Gather args and set globals."""
+    global SUBDOMAINS
+    SUBDOMAINS = FREEDNS_SUBDOMAINS.split()
+
     parser = argparse.ArgumentParser(description='Process FreeDNS updates')
     parser.add_argument(
             'task', default='update', choices=['update', 'status'],
             nargs='?', help='update FreeDNS or view status (default=update)')
     parser.add_argument(
-            '-d', '--domain',  choices=FREEDNS_SUBDOMAINS, metavar='DOMAIN',
+            '-d', '--domain',  choices=SUBDOMAINS, metavar='DOMAIN',
             help='limit update to one domain')
     return parser.parse_args()
 
@@ -195,14 +239,14 @@ def build_status(cache_data):
 
 def run():
 
-    args = getargs()
+    args = setup()
     cache = Cache()
     public_ip = get_public_ip()
 
     if 'update' in args.task:
         freedns = FreeDNS(FREEDNS_USERNAME, FREEDNS_PASSWORD)
 
-        for subdomain in FREEDNS_SUBDOMAINS:
+        for subdomain in SUBDOMAINS:
             if args.domain and not subdomain == args.domain:
                 continue
 
