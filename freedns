@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 
+import argparse
 import datetime
 import hashlib
 import json
 import os
 import urllib.request
 
-
-FREEDNS = {
-        'username': 'peterjpierce',
-        'password': 'Trying123f!',
-        'subdomains': [
-            'ppierce.mooo.com',
-            'homarus.mooo.com',
-            ]
-        }
+# configure here (only)
+FREEDNS_USERNAME =  'xxxxxxxxxxxxx'
+FREEDNS_PASSWORD =  'yyyyyyyyyyy'
+FREEDNS_SUBDOMAINS = """
+        xyz.mooo.com
+        xyz.afraid.org
+""".split()
+# end of configuration
 
 ENCODING = 'utf-8'
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -84,7 +84,7 @@ class Cache():
     def _new_cache(self):
         """Start a new cache from scratch."""
         cache = {'data': {}}
-        for subdomain in FREEDNS['subdomains']:
+        for subdomain in FREEDNS_SUBDOMAINS:
             cache['data'][subdomain] = self._empty_vector()
         return cache
 
@@ -156,23 +156,70 @@ def get_public_ip():
     return public_ip
 
 
+def getargs():
+    parser = argparse.ArgumentParser(description='Process FreeDNS updates')
+    parser.add_argument(
+            'task', default='update', choices=['update', 'status'],
+            nargs='?', help='update FreeDNS or view status (default=update)')
+    parser.add_argument(
+            '-d', '--domain',  choices=FREEDNS_SUBDOMAINS, metavar='DOMAIN',
+            help='limit update to one domain')
+    return parser.parse_args()
+
+
+def build_status(cache_data):
+    """Provide status table as a string for printing to the console."""
+    spacer = '  '
+    headings = spacer.join([
+            '{0:<30}'.format('subdomain'),
+            '{0:<15}'.format('IP-last-check'),
+            '{0:<19}'.format('last-checked'),
+            '{0:<19}'.format('unchanged-since'),
+            '{0:>12}'.format('checks-since'),
+            ])
+    divider = '-' * len(headings)
+    row_format = spacer.join([
+            '{subdomain:<30}',
+            '{ip:<15}',
+            '{checked:<19}',
+            '{new:>19}',
+            '{same_count:>12}',
+            ])
+    table = [headings, divider]
+    for subdomain in sorted(cache_data['data'].keys()):
+        data = dict(cache_data['data'][subdomain])
+        data['subdomain'] = subdomain
+        table.append(row_format.format(**data))
+    return '\n'.join(table)
+
+
 def run():
 
+    args = getargs()
     cache = Cache()
-    freedns = FreeDNS(FREEDNS['username'], FREEDNS['password'])
     public_ip = get_public_ip()
 
-    for subdomain in FREEDNS['subdomains']:
-        if not public_ip == freedns.current_ip(subdomain):
-            updated = freedns.update(subdomain)
-            print('updated FreeDNS for %s to %s' % (subdomain, updated))
+    if 'update' in args.task:
+        freedns = FreeDNS(FREEDNS_USERNAME, FREEDNS_PASSWORD)
 
-            if not updated == public_ip:
-                raise FreeDnsError('FreeDNS not updated to %s' % public_ip)
+        for subdomain in FREEDNS_SUBDOMAINS:
+            if args.domain and not subdomain == args.domain:
+                continue
 
-        cache.update(subdomain, public_ip)
+            if not public_ip == freedns.current_ip(subdomain):
+                updated = freedns.update(subdomain)
+                print('updated FreeDNS for %s to %s' % (subdomain, updated))
 
-    cache.save()
+                if not updated == public_ip:
+                    raise FreeDnsError('FreeDNS not updated to %s' % public_ip)
+
+            cache.update(subdomain, public_ip)
+        cache.save()
+
+    elif 'status' in args.task:
+        cached_data = cache.get_cache()
+        status = build_status(cached_data)
+        print(status)
 
 
 if __name__== '__main__':
