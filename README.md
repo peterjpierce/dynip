@@ -3,18 +3,9 @@ Manage your dynamic IP (DNS) settings for one or more subdomains at
 [FreeDNS](http://freedns.afraid.org).
 
 ## Installation
-This application is intended for UNIX and Windows systems running Python 2.7 or later.
-
-To date, it has been tested successfully on:
-+ Operating Systems:
-    - FreeBSD
-    - Linux
-    - Windows 7
-+ Python Versions:
-    - Python 2.7
-    - Python 3.3
-    - Python 3.4
-
+This application has been tested successfully on FreeBSD, Linux and
+Windows 7, under Python versions 3.4, 3.3 and 2.7.  You should not
+try Python 2.6 or earlier unless you install package argparse first.
 
 ### Step 0: Ensure Python 2.7 or later is installed
 You can verify this by running ```python -V``` at a command prompt.  If
@@ -69,8 +60,8 @@ freedns update --domain xyz.afraid.org
 Running with no arguments (or 'update') checks your current public IP address
 against the settings at FreeDNS and sends an update only if needed.
 
-You may optionally use ```--domain``` to limit this operation to just one of
-your configured subdomains.
+You may optionally use ```--domain``` or ```-d``` to limit this operation to
+just one of your configured subdomains.
 
 ### status
 ```
