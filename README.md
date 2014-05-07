@@ -3,19 +3,34 @@ Manage your dynamic IP (DNS) settings for one or more subdomains at
 [FreeDNS](http://freedns.afraid.org).
 
 ## Installation
-The current version requires Python 2.7 or 3, and has been tested on Linux and
-FreeBSD.
+This application is intended for UNIX and Windows systems running Python 2.7 or later.
+
+To date, it has been tested successfully on:
++ Operating Systems:
+    - FreeBSD
+    - Linux
+    - Windows 7
++ Python Versions:
+    - Python 2.7
+    - Python 3.3
+    - Python 3.4
+
+
+### Step 0: Ensure Python 2.7 or later is installed
+You can verify this by running ```python -V``` at a command prompt.  If
+needed, download and
+[install Python from here](https://www.python.org/downloads/).
 
 ### Step 1: Set up your account and subdomain(s) at FreeDNS
-Follow their [ample instructions](http://freedns.afraid.org).
+Follow their [ample guidance](http://freedns.afraid.org).
 
-### Step 2: Configure FreeDNS
-Download this repository, and edit the `freedns` file, configuring the
-three `FREEDNS_*` variables near the top, to record your username,
-password and subdomains.
+### Step 2: Configure this tool with your FreeDNS settings
+Download this repository, and edit the ```freedns``` file, configuring the
+three FREEDNS_* variables near the top, to record your username,
+password and the subdomains you wish to manage from this location.
 
-To list the subdomains you are managing, separate each with any type of
-white space (including newlines) between the triple quotes, like so:
+Separate each subdomain with any type of white space (including newlines)
+between the triple quotes, like so:
 
 ```
 FREEDNS_SUBDOMAINS = """
@@ -24,10 +39,14 @@ FREEDNS_SUBDOMAINS = """
 """
 ```
 
+(If installing on Windows, you may also want to rename the file with a ```.py```
+extension.  Otherwise, run it like ```python freedns```.  Neither of these
+approaches are necessary for Linux, FreeBSD or OSX.)
+
 ### Step 3: (Optional) Schedule recurring updates
 If you want to keep FreeDNS updated with your latest dynamic IP, schedule this
 script to run at regular intervals.  For example, a crontab entry like this
-will cause checks/updates every four hours (substitute your installation location):
+will cause checks/updates every four hours (substitute your actual installation path):
 
 ```
 5  */4  *  *  *  /home/peter/bin/freedns
@@ -41,15 +60,25 @@ The tool has two primary modes:
 + status
 
 ### update
+```
+freedns
+freedns update
+freedns -d xyz.afraid.org
+freedns update --domain xyz.afraid.org
+```
 Running with no arguments (or 'update') checks your current public IP address
-against settings at FreeDNS and attempts a change only if needed.
+against the settings at FreeDNS and sends an update only if needed.
 
 You may optionally use ```--domain``` to limit this operation to just one of
 your configured subdomains.
 
 ### status
-The tool also keeps a cache of recent statistics (in $HOME/.freedns.cache) which
-you can review using argument 'status', which provides output similar to:
+```
+freedns status
+```
+The tool also keeps a cache of recent statistics (in your $HOME or %LOCALAPPDATA%
+directory) that you can review using argument 'status', which provides output
+similar to:
 
 ```
 subdomain         IP-last-check    last-checked         unchanged-since      checks-since
