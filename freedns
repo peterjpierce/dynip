@@ -28,10 +28,6 @@ for you).  Subdomains may be separated by any type of whitespace,
 including newlines.
 
 by: Peter Pierce <peterjpierce@gmail.com>
-
-BTC 1CavTJLrtRXfWJ5MKZH53dudfq9aWa3z6E
-LTC LhdsXnNjZyMJF8TrvV7y1pSmhyQSs9RyB7
-GLD E3qqqrLejCXVPjZD9XnabYNXvJ8nDeHymF
 """
 
 # Configure here only
@@ -47,10 +43,13 @@ import datetime
 import hashlib
 import json
 import os
+
 try:
     from urllib.request import urlopen
+# backward compatibility for Python 2.7
 except ImportError as err:
     from urllib2 import urlopen
+    FileNotFoundError = IOError
 
 ENCODING = 'utf-8'
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -61,9 +60,9 @@ class Cache():
     """Create, read and update cache values."""
 
     def __init__(self, cache_path=CACHE_FILE):
+        self.changed = False
         self.cache_path = cache_path
         self.cache = self.get_cache()
-        self.changed = False
 
     def __del__(self):
         """Persist any unsaved changes before being destroyed."""

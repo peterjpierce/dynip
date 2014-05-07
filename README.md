@@ -6,9 +6,8 @@ Manage your dynamic IP (DNS) settings for one or more subdomains at
 The current version requires Python 2.7 or 3, and has been tested on Linux and
 FreeBSD.
 
-
 ### Step 1: Set up your account and subdomain(s) at FreeDNS
-Follow their ample instructions.
+Follow their [ample instructions](http://freedns.afraid.org).
 
 ### Step 2: Configure FreeDNS
 Download this repository, and edit the `freedns` file, configuring the
@@ -41,14 +40,14 @@ The tool has two primary modes:
 + update
 + status
 
-# update
+### update
 Running with no arguments (or 'update') checks your current public IP address
 against settings at FreeDNS and attempts a change only if needed.
 
 You may optionally use ```--domain``` to limit this operation to just one of
 your configured subdomains.
 
-# status
+### status
 The tool also keeps a cache of recent statistics (in $HOME/.freedns.cache) which
 you can review using argument 'status', which provides output similar to:
 
@@ -59,11 +58,7 @@ xyz.mooo.com      71.191.181.141   2014-05-05 21:24:08  2013-04-05 13:06:41     
 abc.afraid.net    71.191.181.141   2014-05-05 21:22:40  2013-04-05 13:06:40        324013
 ```
 
-## Donations
-Encouragement is gratefully accepted:
-
-+ BTC: `1CavTJLrtRXfWJ5MKZH53dudfq9aWa3z6E`
-+ LTC: `LhdsXnNjZyMJF8TrvV7y1pSmhyQSs9RyB7`
-+ GLD: `E3qqqrLejCXVPjZD9XnabYNXvJ8nDeHymF`
+## Feedback
+Please ask any questions, report problems, and provide feedback to:  peterjpierce@gmail.com
 
 Thank you!
