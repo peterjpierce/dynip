@@ -4,7 +4,7 @@ Manage your dynamic IP (DNS) settings for one or more subdomains at
 
 ## Installation
 This application has been tested successfully on FreeBSD, Linux and
-Windows 7, under Python versions 3.4, 3.3 and 2.7.  You should not
+Windows 7/8, under Python versions 3.4, 3.3 and 2.7.  You should not
 try Python 2.6 or earlier unless you install package argparse first.
 
 ### Step 0: Ensure Python 2.7 or later is installed
@@ -16,7 +16,7 @@ needed, download and
 Follow their [ample guidance](http://freedns.afraid.org).
 
 ### Step 2: Configure this tool with your FreeDNS settings
-Download this repository, and edit the ```freedns``` file, configuring the
+Download and edit the ```freedns``` file, configuring the
 three FREEDNS_* variables near the top, to record your username,
 password and the subdomains you wish to manage from this location.
 
@@ -35,7 +35,7 @@ extension.  Otherwise, run it like ```python freedns```.  Neither of these
 approaches are necessary for Linux, FreeBSD or OSX.)
 
 ### Step 3: (Optional) Schedule recurring updates
-If you want to keep FreeDNS updated with your latest dynamic IP, schedule this
+If you want to keep FreeDNS updated with your latest dynamic IP address, schedule this
 script to run at regular intervals.  For example, a crontab entry like this
 will cause checks/updates every four hours (substitute your actual installation path):
 
