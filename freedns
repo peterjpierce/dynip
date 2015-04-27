@@ -189,7 +189,7 @@ class FreeDnsError(Exception):
 
 
 def get_public_ip():
-    f = urlopen('http://plainip.com')
+    f = urlopen('http://ipecho.net/plain')
     public_ip = f.read().decode(ENCODING)
     f.close()
     return public_ip
